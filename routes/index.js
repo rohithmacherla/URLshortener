@@ -1,50 +1,59 @@
 /*jshint esversion:6*/
 var express = require('express');
 var router = express.Router();
-var mongo = require('mongodb').MongoClient;
-var urlcheck = require('valid-url');
+var validUrl = require('valid-url');
+var shortId = require('shortid');
+var mongoose = require('mongoose');
 
 
-router.get('/:id(*)', function(req, res) {
-    if (req.url === '/favicon.ico') {
-        res.end();
-        return;
-    }
-    var url = "mongodb://localhost:27017/test";
-    var id = req.params.id;
-    var obj = {
-            orginalURL: id,
-            short: "www.website.com/8493"
-    };
+//move this stuff to another file
+var url_schema = mongoose.Schema({
+    original: String,
+    short: String,
+}); 
 
-    //if(id.indexOf('.com') > -1 || id.indexOf('.net') > -1 
-     //   || id.indexOf('.org') > -1 || id.indexOf('.gov') > -1) {
-        //if id is just numbers then look into the database for the original URL and redirect
-        //if it's not my website, then add it to the databse and print JSON
+var url_model = mongoose.model('link', url_schema);
+
+
+
+
+router.get('/api/:url_key(*)', function(req, res) {
+    var url_key = req.params.url_key;
     
-        mongo.connect(url, function(err, db) {
-            if(err) throw err;
-            
-            if(!isNaN(id)) {
-                //connect to database to find original and redirect
-                var og = db.collection('nodes').find({"short": id});
-                if(og !== null) {
-                    res.redirect(og.orginalURL);
-                } else {
-                    res.send("Not Valid");
+    if(!validUrl.isUri(url_key)) {
+        var nullKey = {original:url_key, short:null};
+        res.send(nullKey);
+    } else {
+        var short = shortId.generate();
+        var validKey = {original: url_key, short: short};                
+        res.send(validKey);
+        mongoose.Promise = global.Promise;
+        mongoose.connect('mongodb://localhost/url-example', {useMongoClient: true});
+        var database = mongoose.connection;
+        database.on('error', console.error.bind(console, 'connection error:'));
+        database.once('open', function() {
+            var new_document = url_model(validKey);
+            new_document.save(function(err, ref) {
+                if(err) {
+                    console.log("We have an error saving");
+                    throw err;
                 }
-            } else {
-                //put this into the database and return json
-                var collection = db.collection('nodes');
-                var hash = Math.floor(Math.random()*100000);
-                collection.insert({"orginalURL": id, "short": hash});
-                res.send({"orginalURL": id, "short": hash});
-            }
-            db.close();
+                console.log("Saved new document: " + new_document.original);
+            });
         });
-    //} else {
-    //    res.send({orginalURL:id, "short": null});
-    //}
+    }
 });
+
+
+
+
+
+
+
+
+
+
+
+
 
 module.exports = router;
