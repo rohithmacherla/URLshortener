@@ -4,7 +4,7 @@ var router = express.Router();
 var validUrl = require('valid-url');
 var shortId = require('shortid');
 var mongoose = require('mongoose');
-
+var config = require('../config');
 
 //move this stuff to another file
 var url_schema = mongoose.Schema({
@@ -13,8 +13,18 @@ var url_schema = mongoose.Schema({
 }); 
 
 var url_model = mongoose.model('link', url_schema);
-var database_url = 'mongodb://localhost/url-example';
 
+//If you're running this locally, create a config.js file. 
+
+if(config) {
+    var database_url = config.database_url;
+} else {
+    var database_url = 'mongodb://localhost/url-example';
+}
+
+
+//var database_url = 'mongodb://localhost/url-example';
+//var database_url = 'mongodb://user1:user1pass@ds013216.mlab.com:13216/url-short';
 
 
 router.get('/api/:url_key(*)', function(req, res) {
@@ -24,8 +34,9 @@ router.get('/api/:url_key(*)', function(req, res) {
         res.send(nullKey);
     } else {
         var short = shortId.generate();
-        var validKey = {original: url_key, short: short};                
+        var validKey = {original: url_key, short: "https://tranquil-citadel-50461.herokuapp.com/r/"+short};                
         res.send(validKey);
+        validKey.short = short;
 
         mongoose.Promise = global.Promise;
         mongoose.connect(database_url, {useMongoClient: true});
@@ -46,7 +57,6 @@ router.get('/api/:url_key(*)', function(req, res) {
 
 router.get('/r/:link(*)', function(req, res) {
     var value = req.params.link;
-
     mongoose.Promise = global.Promise;
     mongoose.connect(database_url, {useMongoClient:true});
     var database = mongoose.connection;
@@ -58,8 +68,13 @@ router.get('/r/:link(*)', function(req, res) {
                 console.log("Cannot find key with value: " + value);
                 throw err;
             }
-            console.log("Success! Key:" + doc.original + " Value:" + doc.short);
-            res.redirect(doc.original);
+            if(doc == null) {
+                console.log("FAIL! Nothing matches in database");
+                res.send("There is nothing that matches this search. :(");
+            } else {
+                console.log("Success! Key:" + doc.original + " Value:" + doc.short);
+                res.redirect(doc.original);
+            }
         });
     });
 
