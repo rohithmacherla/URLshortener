@@ -13,13 +13,12 @@ var url_schema = mongoose.Schema({
 }); 
 
 var url_model = mongoose.model('link', url_schema);
-
+var database_url = 'mongodb://localhost/url-example';
 
 
 
 router.get('/api/:url_key(*)', function(req, res) {
     var url_key = req.params.url_key;
-    
     if(!validUrl.isUri(url_key)) {
         var nullKey = {original:url_key, short:null};
         res.send(nullKey);
@@ -27,8 +26,9 @@ router.get('/api/:url_key(*)', function(req, res) {
         var short = shortId.generate();
         var validKey = {original: url_key, short: short};                
         res.send(validKey);
+
         mongoose.Promise = global.Promise;
-        mongoose.connect('mongodb://localhost/url-example', {useMongoClient: true});
+        mongoose.connect(database_url, {useMongoClient: true});
         var database = mongoose.connection;
         database.on('error', console.error.bind(console, 'connection error:'));
         database.once('open', function() {
@@ -42,6 +42,27 @@ router.get('/api/:url_key(*)', function(req, res) {
             });
         });
     }
+});
+
+router.get('/r/:link(*)', function(req, res) {
+    var value = req.params.link;
+
+    mongoose.Promise = global.Promise;
+    mongoose.connect(database_url, {useMongoClient:true});
+    var database = mongoose.connection;
+
+    database.on('error',console.error.bind(console, 'connection error:'));
+    database.once('open', function() {
+        url_model.findOne({short:value}, function(err, doc) {
+            if(err) {
+                console.log("Cannot find key with value: " + value);
+                throw err;
+            }
+            console.log("Success! Key:" + doc.original + " Value:" + doc.short);
+            res.redirect(doc.original);
+        });
+    });
+
 });
 
 
