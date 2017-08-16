@@ -5,7 +5,7 @@ An API that will take a user entered url and return a shorter url that points to
 
 Technologies used: <br />
 Front-end: html,css,javascript <br />
-Back-end: NodeJS, Express, valid-id, shortid <br />
+Back-end: NodeJS, Express, valid-url, shortid <br />
 Database: MongoDB/Mongoose  <br />
 
 
